@@ -1,7 +1,7 @@
 # flower-power
 
 This is a Python script to read the history file of the Parrot
-FlowerPower sensors and stored the data in a JSON file.
+FlowerPower sensors and store the data in a JSON file.
 
 It's currently tested only on Linux.
 

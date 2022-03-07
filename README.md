@@ -31,5 +31,5 @@ To download the history file, run the following:
 
 It happens that the connection is interrupted before the file transfer
 starts. If it does, just launch the command a second time (or
-third...).
+third time...).
 

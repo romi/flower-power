@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # 
-# flower-power - Read the history file of the Parrot Flower Power
+# flower-power-history - Read the history file of the Parrot Flower Power
 # 
 # Copyright (C) 2022 Sony Computer Science Laboratories
 # Authors: Doug Boari, P. Hanappe
 # 
 # This file is part of the ROMI tools.
 # 
-# flower-power is free software: you can redistribute it
+# flower-power-history is free software: you can redistribute it
 # and/or modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation, either
 # version 3 of the License, or (at your option) any later version.
 # 
-# flower-power is distributed in the hope that it will be
+# flower-power-history is distributed in the hope that it will be
 # useful, but WITHOUT ANY WARRANTY; without even the implied
 # warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
@@ -28,10 +28,10 @@
 # and convert_sunlight()
 # The original code is available under the MIT License
 
-# This code relied uses the documentation provided in the Readme of this project:
+# This code relied on the documentation provided in the Readme of this project:
 # https://github.com/BuBuaBu/flower-power-history/blob/master/index.js
 # In particular, the documentation detailed the memory layout of the binary
-# hostory file.
+# history file.
 
 import math
 import time

@@ -6,7 +6,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:0c:d0:f3",
         "location": {
-            "farm": "chatelain",
+            "id": "chatelain",
             "bed": 3,
             "location": "polytunnel, bed 3, center"
         }
@@ -18,7 +18,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:0c:cb:0d",
         "location": {
-            "farm": "chatelain",
+            "id": "chatelain",
             "bed": 3,
             "location": "polytunnel, bed 3, end"
         }
@@ -30,7 +30,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:08:11:eb",
         "location": {
-            "farm": "chatelain",
+            "id": "chatelain",
             "bed": 3,
             "location": "polytunnel, bed 3, start"
         }
@@ -42,7 +42,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:08:01:5f",
         "location": {
-            "farm": "chatelain",
+            "id": "chatelain",
             "bed": null,
             "location": "polytunnel, entrance"
         }
@@ -54,7 +54,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:08:12:9a",
         "location": {
-            "farm": "chatelain",
+            "id": "chatelain",
             "bed": null,
             "location": "polytunnel, manure"
         }
@@ -66,7 +66,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:0c:d2:ad",
         "location": {
-            "farm": "chatelain",
+            "id": "chatelain",
             "bed": null,
             "location": "polytunnel, nursery table"
         }
@@ -78,7 +78,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:08:01:e3",
         "location": {
-            "farm": "test",
+            "id": "test",
             "bed": null,
             "location": "backpack"
         }
@@ -90,7 +90,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:08:02:03",
         "location": {
-            "farm": "test",
+            "id": "test",
             "bed": null,
             "location": "backpack"
         }
@@ -102,7 +102,7 @@
         "type": "FlowerPower",
         "address": "a0:14:3d:08:12:98",
         "location": {
-            "farm": "test",
+            "id": "test",
             "bed": null,
             "location": "backpack"
         }

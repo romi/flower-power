@@ -1006,7 +1006,7 @@ def download_history_of_config_entries(entries):
         download_history_of_config_entry(entry, date_string)
     
 def download_history_of_config_entry(entry, date_string):
-    filename = f"{entry['location']['farm']}-{date_string}-{entry['id']}.json"
+    filename = f"{entry['location']['id']}-{date_string}-{entry['id']}.json"
     download_history_perhaps(entry['address'], filename)
 
 def handle_download(args):

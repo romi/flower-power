@@ -24,6 +24,13 @@ You may have to run it with super-user privileges.
     sudo gattctl --discover
 
 
+
+## List the visible FlowerPowers
+
+
+    python3 flower-power-history.py list
+
+
 ## Download the history from a single FlowerPower
 
 To download the history file, run the following:

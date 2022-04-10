@@ -986,6 +986,36 @@ class FlowerPowerManager(gatt.DeviceManager):
                                          mac_address=self._macaddress) 
         self._flower_power.connect()
 
+class FlowerPowerLister(gatt.DeviceManager):
+
+    PARROT_ID = 'a0:14:3d'
+    
+    def __init__(self, *args, **kwargs):
+        super(FlowerPowerLister, self).__init__(*args, **kwargs)
+        self._start_time = time.time()
+        self._known_flowerpowers = {}
+        print(f"Looking for FlowerPower devices (timeout 1 minute):")            
+        
+    def device_discovered(self, device):
+        if self._is_flowerpower(device) and not self._is_known(device):
+            self._add(device)
+            print(f"FlowerPower[{device.mac_address}]")            
+        if self._timed_out():
+            print(f"Stopping")            
+            self.stop()
+
+    def _is_flowerpower(self, device):
+        return device.mac_address[:8] == self.PARROT_ID
+            
+    def _is_known(self, device):
+        return device.mac_address in self._known_flowerpowers
+            
+    def _add(self, device):
+        self._known_flowerpowers[device.mac_address] = True
+            
+    def _timed_out(self):
+        return time.time() - self._start_time > 60
+
 def download_history(mac_address, path):
     print(f"Download history from FlowerPower[{mac_address}] to '{path}'")
     state_machine = DownloadStateMachine(path)
@@ -1079,13 +1109,21 @@ def convert_measurements_from_json(array):
 def convert_measurements_to_json(array):
     return [x.to_json() for x in array]
 
+def list_flowerpowers():
+    manager = FlowerPowerLister(adapter_name='hci0')
+    manager.start_discovery()
+    manager.run()
+    
+def handle_list(args):
+    list_flowerpowers()
+    
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser(prog='flower-power-history')
     parser.add_argument('--command',
-                        action='store_true',
-                        help='command: download download-using-config')
+                        action='store_true')
     subparsers = parser.add_subparsers(title='subcommands',
                                        description='valid subcommands')
     
@@ -1109,6 +1147,11 @@ if __name__ == '__main__':
     parser_merge.add_argument('input2', type=str, help='The second file.')
     parser_merge.add_argument('output', type=str, help='The destination file (can be the same as one of the input files).')
     parser_merge.set_defaults(func=handle_merge)
+
+    # create the parser for the "list" command
+    parser_list = subparsers.add_parser('list',
+                                         help='List the visible FlowerPower devices.')
+    parser_list.set_defaults(func=handle_list)
 
     # parse and go
     args = parser.parse_args()

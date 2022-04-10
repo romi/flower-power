@@ -1,0 +1,110 @@
+[
+    {
+        "id": "bed3-center",
+        "name": "Flower power D0F3",
+        "color": "green",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:0c:d0:f3",
+        "location": {
+            "farm": "chatelain",
+            "bed": 3,
+            "location": "polytunnel, bed 3, center"
+        }
+    },
+    {
+        "id": "bed3-end",
+        "name": "Flower power CB0D",
+        "color": "green",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:0c:cb:0d",
+        "location": {
+            "farm": "chatelain",
+            "bed": 3,
+            "location": "polytunnel, bed 3, end"
+        }
+    },
+    {
+        "id": "bed3-start",
+        "name": "Flower power 11EB",
+        "color": "light-blue",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:08:11:eb",
+        "location": {
+            "farm": "chatelain",
+            "bed": 3,
+            "location": "polytunnel, bed 3, start"
+        }
+    },
+    {
+        "id": "polytunnel-start",
+        "name": "Flower power 015F",
+        "color": "light-blue",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:08:01:5f",
+        "location": {
+            "farm": "chatelain",
+            "bed": null,
+            "location": "polytunnel, entrance"
+        }
+    },
+    {
+        "id": "polytunnel-manure",
+        "name": "Flower power 129A",
+        "color": "light-blue",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:08:12:9a",
+        "location": {
+            "farm": "chatelain",
+            "bed": null,
+            "location": "polytunnel, manure"
+        }
+    },
+    {
+        "id": "polytunnel-nursery",
+        "name": "Flower power D2AD",
+        "color": "green",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:0c:d2:ad",
+        "location": {
+            "farm": "chatelain",
+            "bed": null,
+            "location": "polytunnel, nursery table"
+        }
+    },
+    {
+        "id": "dev1",
+        "name": "Flower power 01E3",
+        "color": "blue",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:08:01:e3",
+        "location": {
+            "farm": "test",
+            "bed": null,
+            "location": "backpack"
+        }
+    },
+    {
+        "id": "dev2",
+        "name": "Flower power 0203",
+        "color": "blue",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:08:02:03",
+        "location": {
+            "farm": "test",
+            "bed": null,
+            "location": "backpack"
+        }
+    },
+    {
+        "id": "dev3",
+        "name": "Flower power 1298",
+        "color": "blue",
+        "type": "FlowerPower",
+        "address": "a0:14:3d:08:12:98",
+        "location": {
+            "farm": "test",
+            "bed": null,
+            "location": "backpack"
+        }
+    }    
+]

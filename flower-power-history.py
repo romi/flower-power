@@ -42,6 +42,9 @@ import threading
 import json
 import argparse
 import gatt
+import os
+import sys
+import traceback
 
     
 def _little_endian(data, signed=False):
@@ -85,9 +88,84 @@ def convert_sunlight(raw):
     return 0.08640000000000001 * (192773.17000000001 * math.pow(raw, -1.0606619))
 
 
+class RawData():
+    def __init__(self, air_temp, soil_temp, soil_vwc, light):
+        self._air_temperature = air_temp
+        self._soil_temperature = soil_temp
+        self._soil_moisture = soil_vwc
+        self._sunlight = light
+
+    def to_json(self):
+        return {
+            'air-temperature': self._air_temperature,
+            'soil-temperature': self._soil_temperature,
+            'soil-moisture': self._soil_moisture,
+            'sunlight': self._sunlight
+        }
+
+    def from_json(self, data):
+        self._air_temperature = data['air-temperature']
+        self._soil_temperature = data['soil-temperature']
+        self._soil_moisture = data['soil-moisture']
+        self._sunlight = data['sunlight']
+
+    def matches(self, other):
+        return (self._air_temperature == other._air_temperature
+                and self._soil_temperature == other._soil_temperature
+                and self._soil_moisture == other._soil_moisture
+                and self._sunlight == other._sunlight)
+
+class Measurement():
+    def __init__(self, index, timestamp, air_temp, soil_temp, soil_vwc, light):
+        self._index = index
+        self._timestamp = timestamp
+        self._raw = RawData(air_temp, soil_temp, soil_vwc, light)
+        self._air_temperature = convert_temperature(air_temp)
+        self._soil_temperature = convert_temperature(soil_temp)
+        self._soil_moisture = convert_soil_moisture(soil_vwc)
+        self._sunlight = convert_sunlight(light)
+
+    def to_json(self):
+        return {
+            'index': self._index,
+            'date': str(datetime.fromtimestamp(self._timestamp)),
+            'timestamp': self._timestamp,
+            'air-temperature': self._air_temperature,
+            'soil-temperature': self._soil_temperature,
+            'soil-moisture': self._soil_moisture,
+            'sunlight': self._sunlight,
+            'raw-values': self._raw.to_json()
+        }
+
+    def from_json(self, data):
+        self._index = data['index']
+        self._timestamp = data['timestamp']
+        self._air_temperature = data['air-temperature']
+        self._soil_temperature = data['soil-temperature']
+        self._soil_moisture = data['soil-moisture']
+        self._sunlight = data['sunlight']
+        self._raw = RawData(0, 0, 0, 0)
+        self._raw.from_json(data['raw-values'])
+        
+    def matches(self, other):
+        return (self.matches_index(other)
+                and self.matches_timestamp(other)
+                and self.matches_raw_data(other))
+
+    def matches_index(self, other):
+        return self._index == other._index
+
+    def matches_timestamp(self, other):
+        # less than 5 minutes appart (allow for clock drift)
+        return abs(self._timestamp - other._timestamp) < 300
+
+    def matches_raw_data(self, other):
+        return self._raw.matches(other._raw)
+
 
 class HistoryFile():
-    def __init__(self):
+    def __init__(self, address):
+        self._address = address
         self._current_time = 0
         self._device_time = 0
         self._session_id = 0
@@ -151,26 +229,29 @@ class HistoryFile():
         (air_temp, light, soil_ec, soil_temp, soil_vwc, battery) = struct.unpack(">HHHHHH", frame)
 
         timestamp = self._record_timestamp(index)
-        air_temperature = convert_temperature(air_temp)
-        soil_temperature = convert_temperature(soil_temp)
-        soil_moisture = convert_soil_moisture(soil_vwc)
-        sunlight = convert_sunlight(light)
+        measurement = Measurement(index, timestamp, air_temp, soil_temp, soil_vwc, light)
+        self._records.append(measurement)
         
-        self._records.append({
-            'index': index,
-            'date': str(datetime.fromtimestamp(timestamp)),
-            'timestamp': timestamp,
-            'air-temperature': air_temperature,
-            'soil-temperature': soil_temperature,
-            'soil-moisture': soil_moisture,
-            'sunlight': sunlight,
-            'raw-values': {
-                'air-temperature': air_temp,
-                'soil-temperature': soil_temp,
-                'soil-moisture': soil_vwc,
-                'sunlight': light
-            }
-        })
+#        air_temperature = convert_temperature(air_temp)
+#        soil_temperature = convert_temperature(soil_temp)
+#        soil_moisture = convert_soil_moisture(soil_vwc)
+#        sunlight = convert_sunlight(light)
+#        
+#        self._records.append({
+#            'index': index,
+#            'date': str(datetime.fromtimestamp(timestamp)),
+#            'timestamp': timestamp,
+#            'air-temperature': air_temperature,
+#            'soil-temperature': soil_temperature,
+#            'soil-moisture': soil_moisture,
+#            'sunlight': sunlight,
+#            'raw-values': {
+#                'air-temperature': air_temp,
+#                'soil-temperature': soil_temp,
+#                'soil-moisture': soil_vwc,
+#                'sunlight': light
+#            }
+#        })
         
     def _record_timestamp(self, index):
         return self._startup_time + self._record_relative_timestamp(index)	
@@ -181,20 +262,29 @@ class HistoryFile():
         
     def _store(self, path):
         data = {
+            'address': self._address,
             'first-entry-index': self._first_entry_index,
             'last-entry-index': self._last_entry_index,
             'session-start-index': self._session_start_index,
             'period': self._measurement_period,
             'session-id': self._session_id,
-            'measurements': self._records
+            'measurements': self._records_to_json()
         }
         with open(path, 'w') as f:
             json.dump(data, f, indent=4)
             
+    def _records_to_json(self):
+        array = []
+        for record in self._records:
+            array.append(record.to_json())
+        return array
+
+    
 class StateTransitionHandler(ABC):
     def __init__(self):
         pass
 
+    @abstractmethod
     def do_transition(self, state_machine, device, history, data=None):
         pass
 
@@ -390,8 +480,34 @@ class StateTransition():
     def do_transition(self, device, history, data=None):
         self.handler.do_transition(self.state_machine, device, history, data)
 
-        
-class DownloadStateMachine():
+
+class IStateMachine(ABC):
+
+    @abstractmethod
+    def set_device(self, device):
+        pass
+    
+    @abstractmethod
+    def handle_event(self, event, data=None):
+        pass
+    
+    @abstractmethod
+    def handle_notifications_succeeded(self, characteristic):
+        pass
+
+    @abstractmethod
+    def handle_write_succeeded(self, characteristic):
+        pass
+
+    @abstractmethod
+    def handle_value_updated(self, characteristic, data):
+        pass
+
+    @abstractmethod
+    def finished(self):
+        pass
+
+class DownloadStateMachine(IStateMachine):
     
     STATE_STANDBY = "standby"
     STATE_INITIALIZING_TIME = "initializing-time"
@@ -413,6 +529,7 @@ class DownloadStateMachine():
     STATE_CHECKING_TX_STATUS_DURING_TRANSFER = "checking-tx-status-during-transfer"
     STATE_WAITING_LED_ON = "waiting-led-on"
     STATE_WAITING_LED_OFF = "waiting-led-off"
+    STATE_FINISHED = "finished"
 
     STATE_HELP = "help"
     
@@ -439,7 +556,7 @@ class DownloadStateMachine():
     def __init__(self, path):
         self._path = path
         self._device = None
-        self._history = HistoryFile()
+        self._history = None
         self._state = self.STATE_STANDBY
         self._count = 0
 
@@ -569,7 +686,7 @@ class DownloadStateMachine():
 
         self._add(self.STATE_WAITING_LED_OFF,
                   self.EVENT_LED_OK,
-                  self.STATE_STANDBY,
+                  self.STATE_FINISHED,
                   DoQuit())
         
         self._add(self.STATE_SETTING_RX_STATUS_TO_ACK,
@@ -579,6 +696,10 @@ class DownloadStateMachine():
         
     def set_device(self, device):
         self._device = device
+        self._history = HistoryFile(device.mac_address)
+
+    def finished(self):
+        return self._state == self.STATE_FINISHED
         
     def _add(self, from_, event, to, handler):
         self._state_transitions.append(StateTransition(self, from_, event, to, handler))
@@ -706,6 +827,8 @@ class FlowerPower(gatt.Device):
     def disconnect_succeeded(self):
         super().disconnect_succeeded()
         self.log("Disconnected")
+        if not self._state_machine.finished():
+            self.log("Download failed")
         self.stop()
 
     def services_resolved(self):
@@ -839,12 +962,14 @@ class FlowerPowerManager(gatt.DeviceManager):
         self._macaddress = macaddress
         self._state_machine = state_machine
         self._flower_power = None
+        print(f"Looking for FlowerPower[{self._macaddress}]...")            
         
     def device_discovered(self, device):
         if self._this_is_the_one(device):
             self.stop_discovery()
             self._connect_to_flower_power(device)
-        elif self._timed_out(): 
+        elif self._timed_out():
+            print(f"Time out: Failed to detect FlowerPower[{self._macaddress}]")            
             self.stop()
 
     def _this_is_the_one(self, device):
@@ -861,17 +986,130 @@ class FlowerPowerManager(gatt.DeviceManager):
                                          mac_address=self._macaddress) 
         self._flower_power.connect()
 
-        
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("address")
-    parser.add_argument("file")
-    args = parser.parse_args()
-    
-    macaddress = args.address
-    path = args.file
-
+def download_history(mac_address, path):
+    print(f"Download history from FlowerPower[{mac_address}] to '{path}'")
     state_machine = DownloadStateMachine(path)
-    manager = FlowerPowerManager(macaddress, state_machine, adapter_name='hci0')
+    manager = FlowerPowerManager(mac_address, state_machine, adapter_name='hci0')
     manager.start_discovery()
     manager.run()
+    
+def download_history_perhaps(mac_address, path):
+    if os.path.isfile(path):
+        print(f"File exists. Skipping '{path}'")
+    else:
+        download_history(mac_address, path)
+        
+def download_history_of_config_entries(entries):
+    now = datetime.now()
+    date_string = now.strftime("%Y%m%d")
+    for entry in entries:
+        download_history_of_config_entry(entry, date_string)
+    
+def download_history_of_config_entry(entry, date_string):
+    filename = f"{entry['location']['farm']}-{date_string}-{entry['id']}.json"
+    download_history_perhaps(entry['address'], filename)
+
+def handle_download(args):
+    download_history(args.address, args.file)    
+    
+def handle_download_using_config(args):
+    entries = []
+    with open(args.config, 'r') as f:
+        entries = json.load(f)
+    download_history_of_config_entries(entries)
+
+def handle_merge(args):
+    try_merge_history_files(args.input1, args.input2, args.output)
+    
+def try_merge_history_files(in1, in2, out):
+    try:
+        merge_history_files(in1, in2, out)
+    except ValueError as e:
+        traceback.print_exc()
+        print(f"Merge failed: {e}")
+    
+def merge_history_files(in1, in2, out):
+    hist1 = load_history_file(in1)
+    hist2 = load_history_file(in2)
+    result = merge_headers(hist1, hist2)
+    measurements = merge_measurements(hist1, hist2)
+    result['measurements'] = convert_measurements_to_json(measurements)
+    store_history_file(result, out)
+    
+def load_history_file(path):
+    with open(path, 'r') as f:
+        history = json.load(f)
+    return history
+
+def store_history_file(data, path):
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def merge_headers(hist1, hist2):
+    if hist1['address'] != hist2['address']:
+        raise ValueError("The history files belong to two different devices")
+    return {'address': hist1['address']}
+    
+def merge_measurements(hist1, hist2):
+    measurements_1 = convert_measurements_from_json(hist1['measurements'])
+    measurements_2 = convert_measurements_from_json(hist2['measurements'])
+    result = measurements_1
+    for measurement in measurements_2:
+        if not measurements_contain(result, measurement):
+            result.append(measurement)
+    result = sorted(result, key=lambda x: x._index)
+    return result
+            
+def measurements_contain(array, measurement):
+    result = False
+    for element in array:
+        if element.matches(measurement):
+            result = True
+            break
+    return result
+    
+def convert_measurements_from_json(array):
+    result = []
+    for element in array:
+        m = Measurement(0, 0, 0, 0, 0, 1.0)
+        m.from_json(element)
+        result.append(m)
+    return result
+
+def convert_measurements_to_json(array):
+    return [x.to_json() for x in array]
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='flower-power-history')
+    parser.add_argument('--command',
+                        action='store_true',
+                        help='command: download download-using-config')
+    subparsers = parser.add_subparsers(title='subcommands',
+                                       description='valid subcommands')
+    
+    # create the parser for the "download" command
+    parser_download = subparsers.add_parser('download',
+                                            help='Download the history from a single FlowerPower and store it to a file.')
+    parser_download.add_argument('address', type=str, help='MAC address')
+    parser_download.add_argument('file', type=str, help='The file to store the data')
+    parser_download.set_defaults(func=handle_download)
+
+    # create the parser for the "download-using-config" command
+    parser_download_config = subparsers.add_parser('download-using-config',
+                                            help='Read a list of FlowerPower addresses from a JSON config file and them download the history for each of them.')
+    parser_download_config.add_argument('config', type=str, help='The config file')
+    parser_download_config.set_defaults(func=handle_download_using_config)
+
+    # create the parser for the "merge" command
+    parser_merge = subparsers.add_parser('merge',
+                                         help='Merge two history files.')
+    parser_merge.add_argument('input1', type=str, help='The first file.')
+    parser_merge.add_argument('input2', type=str, help='The second file.')
+    parser_merge.add_argument('output', type=str, help='The destination file (can be the same as one of the input files).')
+    parser_merge.set_defaults(func=handle_merge)
+
+    # parse and go
+    args = parser.parse_args()
+    args.func(args)

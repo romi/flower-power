@@ -211,11 +211,7 @@ class HistoryFile():
         header = self._data[:16]
         (dummy, num_entries, last_entry_time, first_entry_index,
          last_entry_index, session_id, period) = struct.unpack(">HHIHHHH", header)
-        #print(f"last_entry_time {last_entry_time}")
-        #print(f"first_entry_index {first_entry_index}")
-        #print(f"last_entry_index {last_entry_index}")
         self._last_entry_time = last_entry_time
-        #self._first_entry_index = first_entry_index
         
     def _convert_records(self):
         for i in range(self._number_entries):
@@ -231,27 +227,6 @@ class HistoryFile():
         timestamp = self._record_timestamp(index)
         measurement = Measurement(index, timestamp, air_temp, soil_temp, soil_vwc, light)
         self._records.append(measurement)
-        
-#        air_temperature = convert_temperature(air_temp)
-#        soil_temperature = convert_temperature(soil_temp)
-#        soil_moisture = convert_soil_moisture(soil_vwc)
-#        sunlight = convert_sunlight(light)
-#        
-#        self._records.append({
-#            'index': index,
-#            'date': str(datetime.fromtimestamp(timestamp)),
-#            'timestamp': timestamp,
-#            'air-temperature': air_temperature,
-#            'soil-temperature': soil_temperature,
-#            'soil-moisture': soil_moisture,
-#            'sunlight': sunlight,
-#            'raw-values': {
-#                'air-temperature': air_temp,
-#                'soil-temperature': soil_temp,
-#                'soil-moisture': soil_vwc,
-#                'sunlight': light
-#            }
-#        })
         
     def _record_timestamp(self, index):
         return self._startup_time + self._record_relative_timestamp(index)	
@@ -450,15 +425,6 @@ class StoreHistoryFile(StateTransitionHandler):
     def do_transition(self, state_machine, device, history, data=None):
         if history._count % 64 != 0:
             print(f' ({history._count}, {history._bytes_downloaded}/{history._length})')
-        #print('--')
-        #print(f"File Length: {history._length}")
-        #print(f"Device Time: {history._device_time}")
-        #print(f"Session ID: {history._session_id}")
-        #print(f"Measurement Period: {history._measurement_period}")
-        #print(f"Session Start Index: {history._session_start_index}")
-        #print(f"Last Entry Index: {history._last_entry_index}")
-        #print(f"Number of Buffers: {history._count}")
-        #print(f"Number of Entries: {history._number_entries}")
         history.store(self._path)
         print(f"Data saved in {self._path}")
         
@@ -943,7 +909,6 @@ class FlowerPower(gatt.Device):
         self.stop()
 
     def characteristic_value_updated(self, characteristic, value):
-        #print("characteristic_value_updated " + characteristic.uuid + ": " + str(value))
         self._state_machine.handle_value_updated(characteristic, value)
 
     def characteristic_write_value_succeeded(self, characteristic):
